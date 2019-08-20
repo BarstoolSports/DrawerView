@@ -63,7 +63,7 @@ let kVelocityTreshold: CGFloat = 0
 // Vertical leeway is used to cover the bottom with springy animations.
 let kVerticalLeeway: CGFloat = 10.0
 
-let kDefaultCornerRadius: CGFloat = 9.0
+let kDefaultCornerRadius: CGFloat = 20.0
 
 let kDefaultShadowRadius: CGFloat = 1.0
 
@@ -1037,7 +1037,7 @@ private struct ChildScrollViewInfo {
             overlay.leadingAnchor.constraint(equalTo: superview.leadingAnchor),
             overlay.trailingAnchor.constraint(equalTo: superview.trailingAnchor),
             overlay.heightAnchor.constraint(equalTo: superview.heightAnchor),
-            overlay.bottomAnchor.constraint(equalTo: self.topAnchor)
+            overlay.bottomAnchor.constraint(equalTo: self.topAnchor, constant: self.cornerRadius)
         ]
 
         for constraint in constraints {
