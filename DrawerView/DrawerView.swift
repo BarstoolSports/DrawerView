@@ -11,15 +11,6 @@ import Dispatch
 
 let LOGGING = false
 
-let dateFormat = "yyyy-MM-dd hh:mm:ss.SSS"
-let dateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateFormat = dateFormat
-    formatter.locale = Locale.current
-    formatter.timeZone = TimeZone.current
-    return formatter
-}()
-
 @objc public enum DrawerPosition: Int {
     case closed = 0
     case collapsed = 1
@@ -436,19 +427,11 @@ private struct ChildScrollViewInfo {
     }
 
     private func setup() {
-        #if swift(>=4.2)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleOrientationChange),
             name: UIDevice.orientationDidChangeNotification,
             object: nil)
-        #else
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleOrientationChange),
-            name: NSNotification.Name.UIDeviceOrientationDidChange,
-            object: nil)
-        #endif
 
         panGestureRecognizer = DrawerViewPanGestureRecognizer(target: self, action: #selector(handlePan))
         panGestureRecognizer.maximumNumberOfTouches = 2
@@ -1205,7 +1188,7 @@ extension DrawerView: UIGestureRecognizerDelegate {
         if gestureRecognizer === self.panGestureRecognizer {
             if let scrollView = otherGestureRecognizer.view as? UIScrollView {
 
-                if let index = self.childScrollViews.index(where: { $0.scrollView === scrollView }) {
+                if let index = self.childScrollViews.firstIndex(where: { $0.scrollView === scrollView }) {
                     // Existing scroll view, update it.
                     let scrollInfo = self.childScrollViews[index]
                     self.childScrollViews[index].gestureRecognizers = scrollInfo.gestureRecognizers + [otherGestureRecognizer]
@@ -1280,7 +1263,7 @@ public extension BidirectionalCollection where Element == DrawerPosition {
             return nil
         }
 
-        if let index = self.index(of: position) {
+        if let index = self.firstIndex(of: position) {
             let nextIndex = self.index(index, offsetBy: offset)
             return self.indices.contains(nextIndex) ? self[nextIndex] : nil
         } else {
@@ -1328,16 +1311,6 @@ fileprivate extension UIGestureRecognizer.State {
     }
 }
 
-#if !swift(>=4.2)
-fileprivate extension Array {
-
-    // Backwards support for compactMap.
-    public func compactMap<ElementOfResult>(_ transform: (Element) throws -> ElementOfResult?) rethrows -> [ElementOfResult] {
-        return try self.flatMap(transform)
-    }
-}
-#endif
-
 // MARK: - Private functions
 
 fileprivate func damp(value: CGFloat, factor: CGFloat) -> CGFloat {
@@ -1351,7 +1324,7 @@ fileprivate func abort(reason: String) -> Never  {
 
 fileprivate func log(_ message: String) {
     if LOGGING {
-        print("\(dateFormatter.string(from: Date())): \(message)")
+        print("[DrawerView]", message)
     }
 }
 

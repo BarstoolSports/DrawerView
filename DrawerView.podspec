@@ -84,6 +84,7 @@ DrawerView is a view for iOS that mimics the functionality of the drawer introdu
   #  Not including the public_header_files will make all headers public.
   #
 
+  s.swift_version = '5.0'
   s.source_files  = "DrawerView", "DrawerView/**/*.{h,m}"
   # s.exclude_files = ""
 
