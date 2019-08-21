@@ -1055,25 +1055,18 @@ private struct ChildScrollViewInfo {
             return
         }
 
-        let values = snapPositions(for: DrawerPosition.allPositions, inSuperView: superview)
-            .map {(
-                position: $0.snapPosition,
-                value: self.opacityFactor(for: $0.position)
-                )}
+        let minValue = snapPositions(for: [.partiallyOpen], inSuperView: superview)[0].snapPosition
+        let maxValue = snapPositions(for: [.open], inSuperView: superview)[0].snapPosition
 
-        let opacityFactor = interpolate(
-            values: values,
-            position: position)
-
+        let opacityFactor = max(0, (position - minValue) / (maxValue - minValue))
         let maxOpacity: CGFloat = 0.5
 
-        if opacityFactor > 0 {
-            self.overlay = self.overlay ?? createOverlay()
-            self.overlay?.alpha = opacityFactor * maxOpacity
-        } else {
-            self.overlay?.removeFromSuperview()
-            self.overlay = nil
+        if overlay == nil {
+            overlay = createOverlay()
         }
+
+        overlay?.alpha = opacityFactor * maxOpacity
+        overlay?.isUserInteractionEnabled = opacityFactor > 0
     }
 
     private func setShadowOpacity(forScrollPosition position: CGFloat) {
