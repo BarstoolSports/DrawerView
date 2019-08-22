@@ -139,7 +139,7 @@ private struct ChildScrollViewInfo {
 
     fileprivate var childScrollViews: [ChildScrollViewInfo] = []
 
-    private var overlay: Overlay?
+    private var overlay = UIView()
 
     private let borderView = UIView()
 
@@ -161,20 +161,6 @@ private struct ChildScrollViewInfo {
 
     /// The corner radius of the drawer view.
     @IBInspectable public var cornerRadius: CGFloat = kDefaultCornerRadius {
-        didSet {
-            updateVisuals()
-        }
-    }
-
-    /// The shadow radius of the drawer view.
-    @IBInspectable public var shadowRadius: CGFloat = kDefaultShadowRadius {
-        didSet {
-            updateVisuals()
-        }
-    }
-
-    /// The shadow opacity of the drawer view.
-    @IBInspectable public var shadowOpacity: Float = kDefaultShadowOpacity {
         didSet {
             updateVisuals()
         }
@@ -214,7 +200,7 @@ private struct ChildScrollViewInfo {
 
     public override var isHidden: Bool {
         didSet {
-            self.overlay?.isHidden = isHidden
+            self.overlay.isHidden = isHidden
         }
     }
 
@@ -238,7 +224,7 @@ private struct ChildScrollViewInfo {
         let pos = snapPosition(for: .closed, inSuperView: superview)
         self.scrollToPosition(pos, animated: animated, notifyDelegate: true) { _ in
             self.removeFromSuperview()
-            self.overlay?.removeFromSuperview()
+            self.overlay.removeFromSuperview()
         }
     }
 
@@ -308,7 +294,7 @@ private struct ChildScrollViewInfo {
 
         topConstraint = self.topAnchor.constraint(equalTo: view.topAnchor, constant: self.topMargin)
         heightConstraint = self.heightAnchor.constraint(greaterThanOrEqualTo: view.heightAnchor, multiplier: 1, constant: -self.topSpace)
-        let bottomConstraint = self.bottomAnchor.constraint(greaterThanOrEqualTo: view.bottomAnchor)
+        let bottomConstraint = self.bottomAnchor.constraint(greaterThanOrEqualTo: view.bottomAnchor, constant: 20)
 
         let constraints = [
             self.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -421,8 +407,8 @@ private struct ChildScrollViewInfo {
             view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             view.heightAnchor.constraint(equalTo: self.heightAnchor),
             view.topAnchor.constraint(equalTo: self.topAnchor)
-        ] {
-            c.isActive = true
+            ] {
+                c.isActive = true
         }
     }
 
@@ -626,8 +612,6 @@ private struct ChildScrollViewInfo {
     private func setScrollPosition(_ scrollPosition: CGFloat, notifyDelegate: Bool) {
         self.topConstraint?.constant = scrollPosition
         self.setOverlayOpacity(forScrollPosition: scrollPosition)
-        self.setShadowOpacity(forScrollPosition: scrollPosition)
-        self.setChildrenOpacity(forScrollPosition: scrollPosition)
 
         if notifyDelegate {
             let drawerOffset = convertScrollPositionToOffset(scrollPosition)
@@ -906,19 +890,6 @@ private struct ChildScrollViewInfo {
         }
     }
 
-    private func shadowOpacityFactor(for position: DrawerPosition) -> Float {
-        switch position {
-        case .open:
-            return self.shadowOpacity
-        case .partiallyOpen:
-            return self.shadowOpacity
-        case .collapsed:
-            return self.shadowOpacity
-        case .closed:
-            return 0
-        }
-    }
-
     private func positionFor(offset: CGFloat) -> DrawerPosition {
         guard let superview = superview else {
             return DrawerPosition.collapsed
@@ -937,7 +908,6 @@ private struct ChildScrollViewInfo {
     private func updateVisuals() {
         updateLayerVisuals(self.layer)
         updateBorderVisuals(self.borderView)
-        updateOverlayVisuals(self.overlay)
         updateBackgroundVisuals(self.backgroundView)
         heightConstraint?.constant = -self.topSpace
 
@@ -945,8 +915,6 @@ private struct ChildScrollViewInfo {
     }
 
     private func updateLayerVisuals(_ layer: CALayer) {
-        layer.shadowRadius = shadowRadius
-        layer.shadowOpacity = shadowOpacity
         layer.cornerRadius = self.cornerRadius
     }
 
@@ -954,11 +922,6 @@ private struct ChildScrollViewInfo {
         borderView.layer.cornerRadius = self.cornerRadius
         borderView.layer.borderColor = self.borderColor.cgColor
         borderView.layer.borderWidth = 0.5
-    }
-
-    private func updateOverlayVisuals(_ overlay: Overlay?) {
-        overlay?.backgroundColor = UIColor.black
-        overlay?.cutCornerSize = self.cornerRadius
     }
 
     private func updateBackgroundVisuals(_ backgroundView: UIVisualEffectView) {
@@ -1001,13 +964,14 @@ private struct ChildScrollViewInfo {
         }
     }
 
-    private func createOverlay() -> Overlay? {
+    private func setupOverlay() {
         guard let superview = self.superview else {
             log("ERROR: Could not create overlay.")
-            return nil
+            return
         }
 
-        let overlay = Overlay(frame: superview.bounds)
+        overlay.frame = superview.bounds
+        overlay.backgroundColor = .black
         overlay.isHidden = self.isHidden
         overlay.translatesAutoresizingMaskIntoConstraints = false
         overlay.alpha = 0
@@ -1019,17 +983,13 @@ private struct ChildScrollViewInfo {
         let constraints = [
             overlay.leadingAnchor.constraint(equalTo: superview.leadingAnchor),
             overlay.trailingAnchor.constraint(equalTo: superview.trailingAnchor),
-            overlay.heightAnchor.constraint(equalTo: superview.heightAnchor),
-            overlay.bottomAnchor.constraint(equalTo: self.topAnchor, constant: self.cornerRadius)
+            overlay.bottomAnchor.constraint(equalTo: superview.bottomAnchor),
+            overlay.heightAnchor.constraint(equalToConstant: UIScreen.main.bounds.size.height)
         ]
 
         for constraint in constraints {
             constraint.isActive = true
         }
-
-        updateOverlayVisuals(overlay)
-
-        return overlay
     }
 
     private func setOverlayOpacity(forScrollPosition position: CGFloat) {
@@ -1044,93 +1004,12 @@ private struct ChildScrollViewInfo {
         let opacityFactor = max(0, (position - minValue) / (maxValue - minValue))
         let maxOpacity: CGFloat = 0.5
 
-        if overlay == nil {
-            overlay = createOverlay()
+        if overlay.superview == nil {
+            setupOverlay()
         }
 
-        overlay?.alpha = opacityFactor * maxOpacity
-        overlay?.isUserInteractionEnabled = opacityFactor > 0
-    }
-
-    private func setShadowOpacity(forScrollPosition position: CGFloat) {
-        guard let superview = self.superview else {
-            log("ERROR: Could not set up shadow.")
-            return
-        }
-
-        let values = snapPositions(for: DrawerPosition.allPositions, inSuperView: superview)
-            .map {(
-                position: $0.snapPosition,
-                value: CGFloat(self.shadowOpacityFactor(for: $0.position))
-                )}
-
-        let shadowOpacity = interpolate(
-            values: values,
-            position: position)
-
-        self.layer.shadowOpacity = Float(shadowOpacity)
-    }
-
-    private func setChildrenOpacity(forScrollPosition position: CGFloat) {
-        guard let superview = self.superview else {
-            return
-        }
-
-        // TODO: This method doesn't take into account if a child view opacity was changed while it is hidden.
-
-        if self.bottomInset > 0 {
-
-            // Measure the distance to collapsed position.
-            let snap = self.snapPosition(for: .collapsed, inSuperView: superview)
-            let alpha = min(1, (snap - position) / self.bottomInset)
-
-            if alpha < 1 {
-                // Ask only once when beginning to hide child views.
-                let viewsToHide = self.hiddenChildViews ?? self.childViewsToHide()
-                self.hiddenChildViews = viewsToHide
-
-                viewsToHide.forEach { view in
-                    view.alpha = alpha
-                }
-
-            } else {
-                if let hiddenViews = self.hiddenChildViews {
-                    hiddenViews.forEach { view in
-                        view.alpha = 1
-                    }
-                }
-                self.hiddenChildViews = nil
-            }
-
-            currentChildOpacity = alpha
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func childViewsToHide() -> [UIView] {
-        guard let superview = self.superview else {
-            return []
-        }
-
-        var allowPartial = false
-        switch self.contentVisibilityBehavior {
-        case .allowPartial:
-            allowPartial = true
-            fallthrough
-        case .automatic:
-            // Hide all the views that are not completely above the horizon.
-            let snap = self.snapPosition(for: .collapsed, inSuperView: superview)
-            return (embeddedView ?? self).subviews.filter {
-                $0 !== self.backgroundView && $0 !== self.borderView
-                    && (allowPartial ? $0.frame.minY > snap : $0.frame.maxY > snap)
-            }
-        case .custom(let handler):
-            return handler()
-        case .never:
-            return []
-
-        }
+        overlay.alpha = opacityFactor * maxOpacity
+        overlay.isUserInteractionEnabled = opacityFactor > 0
     }
 
     private var topSpace: CGFloat {
