@@ -56,12 +56,6 @@ let kVerticalLeeway: CGFloat = 10.0
 
 let kDefaultCornerRadius: CGFloat = 20.0
 
-let kDefaultShadowRadius: CGFloat = 1.0
-
-let kDefaultShadowOpacity: Float = 0.05
-
-let kDefaultBackgroundEffect = UIBlurEffect(style: .extraLight)
-
 let kDefaultBorderColor = UIColor(white: 0.2, alpha: 0.2)
 
 
@@ -143,8 +137,6 @@ private struct ChildScrollViewInfo {
 
     private let borderView = UIView()
 
-    private let backgroundView = UIVisualEffectView(effect: kDefaultBackgroundEffect)
-
     private var willConceal: Bool = false
 
     private var _isConcealed: Bool = false
@@ -161,14 +153,6 @@ private struct ChildScrollViewInfo {
 
     /// The corner radius of the drawer view.
     @IBInspectable public var cornerRadius: CGFloat = kDefaultCornerRadius {
-        didSet {
-            updateVisuals()
-        }
-    }
-
-    /// The used effect for the drawer view background. When set to nil no
-    /// effect is used.
-    public var backgroundEffect: UIVisualEffect? = kDefaultBackgroundEffect {
         didSet {
             updateVisuals()
         }
@@ -427,31 +411,9 @@ private struct ChildScrollViewInfo {
 
         self.translatesAutoresizingMaskIntoConstraints = false
 
-        setupBackgroundView()
         setupBorderView()
 
         updateVisuals()
-    }
-
-    private func setupBackgroundView() {
-        backgroundView.frame = self.bounds
-        backgroundView.translatesAutoresizingMaskIntoConstraints = false
-        backgroundView.clipsToBounds = true
-
-        self.insertSubview(backgroundView, at: 0)
-
-        let backgroundViewConstraints = [
-            backgroundView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
-            backgroundView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
-            backgroundView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: kVerticalLeeway),
-            backgroundView.topAnchor.constraint(equalTo: self.topAnchor)
-        ]
-
-        for constraint in backgroundViewConstraints {
-            constraint.isActive = true
-        }
-
-        self.backgroundColor = UIColor.clear
     }
 
     private func setupBorderView() {
@@ -479,12 +441,6 @@ private struct ChildScrollViewInfo {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-
-        // NB: For some reason the subviews of the blur
-        // background don't keep up with sudden change.
-        for view in self.backgroundView.subviews {
-            view.frame.origin.y = 0
-        }
 
         if self.orientationChanged {
             self.updateSnapPosition(animated: false)
@@ -908,7 +864,6 @@ private struct ChildScrollViewInfo {
     private func updateVisuals() {
         updateLayerVisuals(self.layer)
         updateBorderVisuals(self.borderView)
-        updateBackgroundVisuals(self.backgroundView)
         heightConstraint?.constant = -self.topSpace
 
         self.setNeedsDisplay()
@@ -922,25 +877,6 @@ private struct ChildScrollViewInfo {
         borderView.layer.cornerRadius = self.cornerRadius
         borderView.layer.borderColor = self.borderColor.cgColor
         borderView.layer.borderWidth = 0.5
-    }
-
-    private func updateBackgroundVisuals(_ backgroundView: UIVisualEffectView) {
-
-        backgroundView.effect = self.backgroundEffect
-        if #available(iOS 11.0, *) {
-            backgroundView.layer.cornerRadius = self.cornerRadius
-            backgroundView.layer.maskedCorners = [.layerMaxXMinYCorner, .layerMinXMinYCorner]
-        } else {
-            // Fallback on earlier versions
-            let mask: CAShapeLayer = {
-                let m = CAShapeLayer()
-                let frame = backgroundView.bounds.insetBy(top: 0, bottom: -kVerticalLeeway, left: 0, right: 0)
-                let path = UIBezierPath(roundedRect: frame, byRoundingCorners: [.topLeft, .topRight], cornerRadii: CGSize(width: self.cornerRadius, height: self.cornerRadius))
-                m.path = path.cgPath
-                return m
-            }()
-            backgroundView.layer.mask = mask
-        }
     }
 
     public override func safeAreaInsetsDidChange() {
