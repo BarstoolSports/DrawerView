@@ -56,7 +56,7 @@ let kVerticalLeeway: CGFloat = 10.0
 
 let kDefaultCornerRadius: CGFloat = 20.0
 
-let kDefaultBorderColor = UIColor(white: 0.2, alpha: 0.2)
+let kDefaultBorderColor = UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.3)
 
 
 @objc public protocol DrawerViewDelegate {
@@ -134,8 +134,6 @@ private struct ChildScrollViewInfo {
     fileprivate var childScrollViews: [ChildScrollViewInfo] = []
 
     private var overlay = UIView()
-
-    private let borderView = UIView()
 
     private var willConceal: Bool = false
 
@@ -411,30 +409,7 @@ private struct ChildScrollViewInfo {
 
         self.translatesAutoresizingMaskIntoConstraints = false
 
-        setupBorderView()
-
         updateVisuals()
-    }
-
-    private func setupBorderView() {
-        borderView.translatesAutoresizingMaskIntoConstraints = false
-        borderView.clipsToBounds = true
-        borderView.isUserInteractionEnabled = false
-        borderView.backgroundColor = UIColor.clear
-        borderView.layer.cornerRadius = 10
-
-        self.addSubview(borderView)
-
-        let borderViewConstraints = [
-            borderView.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: -0.5),
-            borderView.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: 0.5),
-            borderView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: kVerticalLeeway),
-            borderView.topAnchor.constraint(equalTo: self.topAnchor, constant: -0.5)
-        ]
-
-        for constraint in borderViewConstraints {
-            constraint.isActive = true
-        }
     }
 
     // MARK: - View methods
@@ -719,6 +694,7 @@ private struct ChildScrollViewInfo {
 
         case.failed:
             log("ERROR: UIPanGestureRecognizer failed")
+            self.delegate?.drawerWillEndDragging?(self)
             fallthrough
         case .ended:
             let velocity = sender.velocity(in: self)
@@ -863,7 +839,6 @@ private struct ChildScrollViewInfo {
 
     private func updateVisuals() {
         updateLayerVisuals(self.layer)
-        updateBorderVisuals(self.borderView)
         heightConstraint?.constant = -self.topSpace
 
         self.setNeedsDisplay()
@@ -871,12 +846,8 @@ private struct ChildScrollViewInfo {
 
     private func updateLayerVisuals(_ layer: CALayer) {
         layer.cornerRadius = self.cornerRadius
-    }
-
-    private func updateBorderVisuals(_ borderView: UIView) {
-        borderView.layer.cornerRadius = self.cornerRadius
-        borderView.layer.borderColor = self.borderColor.cgColor
-        borderView.layer.borderWidth = 0.5
+        layer.borderColor = self.borderColor.cgColor
+        layer.borderWidth = self.borderColor == nil ? 0 : 1
     }
 
     public override func safeAreaInsetsDidChange() {
@@ -1024,20 +995,7 @@ extension DrawerView: UIGestureRecognizerDelegate {
     }
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-
-        if gestureRecognizer === self.panGestureRecognizer {
-            if otherGestureRecognizer.view is UIScrollView {
-                // If the gesture recognizer is from a scroll view, do not fail as
-                // we need to work in parallel
-                return false
-            }
-
-            if otherGestureRecognizer.view is UITextField {
-                return false
-            }
-        }
-
-        return true
+        return false
     }
 
 }
