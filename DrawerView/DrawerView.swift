@@ -56,7 +56,9 @@ let kVerticalLeeway: CGFloat = 10.0
 
 let kDefaultCornerRadius: CGFloat = 20.0
 
-let kDefaultBorderColor = UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.3)
+let kDefaultBorderColor = UIColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 0.2)
+
+let kDefaultBorderWidth: CGFloat = 1
 
 
 @objc public protocol DrawerViewDelegate {
@@ -157,6 +159,12 @@ private struct ChildScrollViewInfo {
     }
 
     public var borderColor: UIColor = kDefaultBorderColor {
+        didSet {
+            updateVisuals()
+        }
+    }
+
+    public var borderWidth: CGFloat = kDefaultBorderWidth {
         didSet {
             updateVisuals()
         }
@@ -847,7 +855,7 @@ private struct ChildScrollViewInfo {
     private func updateLayerVisuals(_ layer: CALayer) {
         layer.cornerRadius = self.cornerRadius
         layer.borderColor = self.borderColor.cgColor
-        layer.borderWidth = self.borderColor == nil ? 0 : 1
+        layer.borderWidth = self.borderWidth
     }
 
     public override func safeAreaInsetsDidChange() {
@@ -909,7 +917,7 @@ private struct ChildScrollViewInfo {
         let maxValue = snapPositions(for: [.open], inSuperView: superview)[0].snapPosition
 
         let opacityFactor = max(0, (position - minValue) / (maxValue - minValue))
-        let maxOpacity: CGFloat = 0.5
+        let maxOpacity: CGFloat = 0.7
 
         if overlay.superview == nil {
             setupOverlay()
