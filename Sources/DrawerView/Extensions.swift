@@ -6,7 +6,7 @@
 //  Copyright © 2018 Mikko Välimäki. All rights reserved.
 //
 
-import Foundation
+import UIKit
 
 extension UIViewController {
 
